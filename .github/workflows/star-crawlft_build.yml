@@ -6,27 +6,20 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '18.19.0'
-      - name: Extract version from package.json
-        id: package_version
-        run: echo "::set-output name=VERSION::$(jq -r .version package.json)"
-      - name: Create and Push Tag
-        run: |
-          git config --local user.email "86tkstar@gmail.com"
-          git config --local user.name "onepunch-tk"
-          git tag ${{ steps.package_version.outputs.VERSION }}
-          git push origin ${{ steps.package_version.outputs.VERSION }}
       - name: Install dependencies
         run: yarn install
       - name: Build and Package App
         run: yarn make
       - name: Release to GitGub
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
+          token: ${{ secrets.STAR_CRAWLFT_TOKEN }}
           files: out/make/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.STAR_CRAWLFT_TOKEN }}
