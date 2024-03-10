@@ -24,10 +24,10 @@ const config: ForgeConfig = {
       name: "@electron-forge/publisher-github",
       config: {
         repository: {
-          owner: "star-crawlft-app",
-          name: "onepunch-tk",
+          owner: "onepunch-tk",
+          name: "star-crawlft-app",
         },
-        prerelease: true,
+        authToken: process.env.GITHUB_TOKEN,
       },
     },
   ],
