@@ -19,6 +19,18 @@ const config: ForgeConfig = {
     ignore: [/src[\/\\]__dev__/, /node_modules[\/\\]\.bin/],
   },
   rebuildConfig: {},
+  publishers: [
+    {
+      name: "@electron-forge/publisher-github",
+      config: {
+        repository: {
+          owner: "star-crawlft-app",
+          name: "onepunch-tk",
+        },
+        prerelease: true,
+      },
+    },
+  ],
   makers: [
     new MakerSquirrel({}),
     new MakerZIP({}, ["darwin"]),
