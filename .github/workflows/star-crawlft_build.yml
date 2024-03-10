@@ -20,4 +20,4 @@ jobs:
         with:
           files: out/make/**/*.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.STAR_CRAWLFT_TOKEN }}
+          STAR_CRAWLFT_TOKEN: ${{ secrets.STAR_CRAWLFT_TOKEN }}
