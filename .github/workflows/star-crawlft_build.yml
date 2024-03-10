@@ -8,16 +8,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
-          node-version: '12.x'
+          node-version: '18.19.0'
       - name: Install dependencies
-        run: npm install
+        run: yarn install
       - name: Build and Package App
-        run: npm run make
+        run: yarn make
       - name: Release to GitHub
         uses: softprops/action-gh-release@v1
         with:
           files: out/make/**/*.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.STAR_CRAWLFT_TOKEN }}
