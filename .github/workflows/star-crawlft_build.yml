@@ -11,14 +11,15 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '18.19.0'
-      # 태그 생성 및 푸시
+      - name: Extract version from package.json
+        id: package_version
+        run: echo "::set-output name=VERSION::$(jq -r .version package.json)"
       - name: Create and Push Tag
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          TAG=$(date +'%Y%m%d%H%M%S')
-          git tag $TAG
-          git push origin $TAG
+          git config --local user.email "86tkstar@gmail.com"
+          git config --local user.name "onepunch-tk"
+          git tag ${{ steps.package_version.outputs.VERSION }}
+          git push origin ${{ steps.package_version.outputs.VERSION }}
       - name: Install dependencies
         run: yarn install
       - name: Build and Package App
@@ -28,4 +29,4 @@ jobs:
         with:
           files: out/make/**/*.exe
         env:
-          STAR_CRAWLFT_TOKEN: ${{ secrets.STAR_CRAWLFT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
