@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .dark-theme {
+        @apply bg-neutral-800 text-gray-300
+    }
+}
