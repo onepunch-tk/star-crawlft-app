@@ -16,8 +16,6 @@ jobs:
         run: echo "::set-output name=VERSION::$(jq -r .version package.json)"
       - name: Create and Push Tag
         run: |
-          git config --local user.email "86tkstar@gmail.com"
-          git config --local user.name "onepunch-tk"
           git tag ${{ steps.package_version.outputs.VERSION }}
           git push origin ${{ steps.package_version.outputs.VERSION }}
       - name: Install dependencies
