@@ -1,6 +1,6 @@
 {
   "name": "star-crawlft-app",
-  "productName": "star-crawlft-app",
+  "productName": "Star Crawlft",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",

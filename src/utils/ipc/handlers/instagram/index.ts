@@ -286,9 +286,10 @@ const downloadTextContent = async (
     : path.join(rootPath, `${account}-${Date.now()}`);
   await fsPromise.mkdir(finalDownloadPath, { recursive: true });
 
+  const normalizedTextContent = textContent.normalize("NFC");
   await fsPromise.writeFile(
     path.join(finalDownloadPath, "textContent.txt"),
-    textContent,
+    normalizedTextContent,
     "utf-8"
   );
 
