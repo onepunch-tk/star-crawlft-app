@@ -30,6 +30,7 @@ import { app } from "electron";
 import sharp from "sharp";
 import { mainWindow } from "../../../../main";
 import { CHANNEL_INSTAGRAM_SCRAP_RESULT } from "../../ipc.constant";
+import puppeteer from "puppeteer-extra";
 
 const INSTA_LOGIN_URL = "https://instagram.com/accounts/login";
 const INSTA_URL = "https://instagram.com/";
@@ -264,27 +265,29 @@ export const instagramSignIn = async (
         };
       }
     }
-
-    browser = await createBrowser({
-      blockResources: [],
-      dirPrefix: "insta",
-      username,
-    });
-
-    if (!browser) {
-      throw new Error("Browser 생성 실패");
-    }
-    //page = await createPage(browser, false);
-    await waitFor(500);
+    browser = await puppeteer.launch({ headless: false });
     page = await browser.newPage();
-
-    if (!page) {
-      throw new Error("page 생성 실패");
-    }
-    await page.goto("https://instagram.com/accounts/login", {
-      waitUntil: "networkidle2",
-      timeout: 10000,
-    });
+    await page.goto("https://www.naver.com");
+    // browser = await createBrowser({
+    //   blockResources: [],
+    //   dirPrefix: "insta",
+    //   username,
+    // });
+    //
+    // if (!browser) {
+    //   throw new Error("Browser 생성 실패");
+    // }
+    // //page = await createPage(browser, false);
+    // await waitFor(500);
+    // page = await browser.newPage();
+    //
+    // if (!page) {
+    //   throw new Error("page 생성 실패");
+    // }
+    // await page.goto("https://instagram.com/accounts/login", {
+    //   waitUntil: "networkidle2",
+    //   timeout: 10000,
+    // });
 
     //login form이 있을 경우 로그인 시도.
     if (await isSignForInstagram(page)) {
