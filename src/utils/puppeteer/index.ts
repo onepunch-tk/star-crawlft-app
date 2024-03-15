@@ -29,7 +29,6 @@ export const createBrowser = async ({
     "--disable-setuid-sandbox",
     "--disable-web-security",
     "--disable-popup-blocking",
-    "--enable-features=NetworkService,NetworkServiceInProcess",
     "--lang=en",
   ];
   const headless = MAIN_WINDOW_VITE_DEV_SERVER_URL ? false : "shell";

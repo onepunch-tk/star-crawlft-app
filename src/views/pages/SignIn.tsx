@@ -53,7 +53,7 @@ export function SignIn() {
         setSignedIn({ username, userId: id });
         navigate(Path.HOME);
       }
-      console.log(authUser);
+      console.log("authUser:", authUser);
     }
 
     setIsWorking(false);
