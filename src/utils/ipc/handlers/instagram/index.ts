@@ -265,7 +265,18 @@ export const instagramSignIn = async (
         };
       }
     }
-    browser = await puppeteer.launch({ headless: false });
+    //"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    browser = await puppeteer.launch({
+      headless: false,
+      executablePath: path.join(
+        "C:",
+        "Program Files",
+        "Google",
+        "Chrome",
+        "Application",
+        "chrome.exe"
+      ),
+    });
     page = await browser.newPage();
     await page.goto("https://www.naver.com");
     // browser = await createBrowser({
