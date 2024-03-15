@@ -1,13 +1,28 @@
 import { cls } from "../../utils/helpers";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Path } from "../pages/Root";
+import { useRecoilValue } from "recoil";
+import {
+  scrapWorkingState,
+  signInWorkState,
+} from "../../utils/recoil/instagram/atoms";
 
 interface NavbarProps {
   username?: string;
 }
 export function Navbar({ username }: NavbarProps) {
   const currentPathName = useLocation().pathname;
+  const scrapWorking = useRecoilValue(scrapWorkingState).isWorking;
+  const signInWorking = useRecoilValue(signInWorkState);
+
   const navigate = useNavigate();
+  const navigateHandle = (movePath: Path) => {
+    if (scrapWorking || signInWorking) {
+      return;
+    }
+
+    navigate(movePath);
+  };
   return (
     <nav
       className={cls(
@@ -18,7 +33,7 @@ export function Navbar({ username }: NavbarProps) {
         <div className={cls("flex space-x-8 text-xl text-orange-400")}>
           {username ? (
             <div
-              onClick={() => navigate(Path.HOME)}
+              onClick={() => navigateHandle(Path.HOME)}
               className={cls(
                 "cursor-pointer font-semibold transition-[transform] duration-300 hover:scale-110",
                 currentPathName.includes(Path.HOME) &&
@@ -29,7 +44,7 @@ export function Navbar({ username }: NavbarProps) {
             </div>
           ) : null}
           <div
-            onClick={() => navigate(Path.SIGN_IN)}
+            onClick={() => navigateHandle(Path.SIGN_IN)}
             className={cls(
               "cursor-pointer font-semibold transition-[transform] duration-300 hover:scale-110",
               currentPathName.includes(Path.SIGN_IN) &&
@@ -39,7 +54,7 @@ export function Navbar({ username }: NavbarProps) {
             <span>{username ? "다른 계정 로그인" : "로그인"}</span>
           </div>
           <div
-            onClick={() => navigate(Path.HISTORY)}
+            onClick={() => navigateHandle(Path.HISTORY)}
             className={cls(
               "cursor-pointer font-semibold transition-[transform] duration-300 hover:scale-110",
               currentPathName.includes(Path.HISTORY) &&

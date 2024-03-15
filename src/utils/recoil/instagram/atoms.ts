@@ -17,6 +17,10 @@ export interface ScrapWorkInfo {
   scrapWorkList: ScrapField[];
 }
 
+export interface SignInWorkInfo {
+  isWorking: boolean;
+}
+
 export interface ScrapHistory {
   key: string;
   result: ScrapResult[];
@@ -38,4 +42,9 @@ export const scrapResultState = atom<ScrapHistory[]>({
   key: "scrapResultState",
   default: [],
   effects: [localStorageEffect],
+});
+
+export const signInWorkState = atom<boolean>({
+  key: "signInWorkState",
+  default: false,
 });

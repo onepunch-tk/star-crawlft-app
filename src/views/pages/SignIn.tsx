@@ -2,7 +2,10 @@ import { cls } from "../../utils/helpers";
 import { useState } from "react";
 import { API_STAR_CRAWLFT } from "../../utils/ipc/ipc.constant";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { signedInUserState } from "../../utils/recoil/instagram/atoms";
+import {
+  signedInUserState,
+  signInWorkState,
+} from "../../utils/recoil/instagram/atoms";
 import { useNavigate } from "react-router-dom";
 import { Path } from "./Root";
 import { loadingMessageState } from "../../utils/recoil/loading-message/atoms";
@@ -13,7 +16,7 @@ export function SignIn() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [signedUser, setSignedIn] = useRecoilState(signedInUserState);
-  const [isWorking, setIsWorking] = useState(false);
+  const [signInWorking, setSignInWorking] = useRecoilState(signInWorkState);
   const setLodingMessage = useSetRecoilState(loadingMessageState);
   const navigate = useNavigate();
 
@@ -31,7 +34,7 @@ export function SignIn() {
   const signInHandle = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLodingMessage("로그인 중...");
-    setIsWorking(true);
+    setSignInWorking(true);
     if (!username || !password) {
       return;
     }
@@ -56,10 +59,10 @@ export function SignIn() {
       console.log("authUser:", authUser);
     }
 
-    setIsWorking(false);
+    setSignInWorking(false);
   };
 
-  if (isWorking) {
+  if (signInWorking) {
     return <Loading />;
   }
 
