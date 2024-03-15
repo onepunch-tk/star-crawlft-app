@@ -17,9 +17,9 @@ import {
 import { openDialog } from "./utils/ipc/handlers/common.handle";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-// if (require("electron-squirrel-startup")) {
-//   app.quit();
-// }
+if (require("electron-squirrel-startup")) {
+  app.quit();
+}
 
 export let mainWindow: BrowserWindow;
 
