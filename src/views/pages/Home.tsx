@@ -185,14 +185,14 @@ export function Home() {
         const updatedHistory = [...oldScrapResults];
         updatedHistory[historyIndex] = {
           ...updatedHistory[historyIndex],
-          result: [...updatedHistory[historyIndex].result, newScrapResult],
+          result: [newScrapResult, ...updatedHistory[historyIndex].result],
         };
         return updatedHistory;
       } else {
         // 일치하는 key가 없다면, 새로운 항목 추가
         return [
-          ...oldScrapResults,
           { key: newScrapResult.key, result: [newScrapResult] },
+          ...oldScrapResults,
         ];
       }
     });
