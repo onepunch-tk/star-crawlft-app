@@ -26,7 +26,7 @@ import { User } from "../../../../db/models/user.model";
 import fsPromise from "fs/promises";
 import { constants } from "fs";
 import path from "path";
-import { app, Notification } from "electron";
+import { app } from "electron";
 import sharp from "sharp";
 import { mainWindow } from "../../../../main";
 import { CHANNEL_INSTAGRAM_SCRAP_RESULT } from "../../ipc.constant";
@@ -270,10 +270,6 @@ export const instagramSignIn = async (
       dirPrefix: "insta",
       username,
     });
-    const notification = new Notification({
-      title: "browser",
-      body: `${username} ${password} ${INSTA_LOGIN_URL}`,
-    });
 
     if (!browser) {
       throw new Error("Browser 생성 실패");
@@ -282,12 +278,13 @@ export const instagramSignIn = async (
     await waitFor(500);
     page = await browser.newPage();
 
-    notification.show();
-
     if (!page) {
       throw new Error("page 생성 실패");
     }
-    await page.goto(INSTA_LOGIN_URL, { waitUntil: "networkidle2" });
+    await page.goto("https://instagram.com/accounts/login", {
+      waitUntil: "networkidle2",
+      timeout: 10000,
+    });
 
     //login form이 있을 경우 로그인 시도.
     if (await isSignForInstagram(page)) {
