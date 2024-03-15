@@ -271,12 +271,12 @@ export const instagramSignIn = async (
       throw new Error("Browser 생성 실패");
     }
     //page = await createPage(browser, false);
+    await waitFor(500);
     page = await browser.newPage();
 
     if (!page) {
       throw new Error("page 생성 실패");
     }
-
     await page.goto(INSTA_LOGIN_URL, { waitUntil: "networkidle2" });
 
     //login form이 있을 경우 로그인 시도.
