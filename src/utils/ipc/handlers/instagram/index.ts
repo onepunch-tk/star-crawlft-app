@@ -8,7 +8,9 @@ import {
 } from "../../../puppeteer";
 import {
   MarkStatus,
-  ScrapInput,
+  ScrapInfo,
+  ScrapResult,
+  ScrapStatus,
   SignInInput,
   SignInResponse,
 } from "./interface";
@@ -26,6 +28,8 @@ import { constants } from "fs";
 import path from "path";
 import { app } from "electron";
 import sharp from "sharp";
+import { mainWindow } from "../../../../main";
+import { CHANNEL_INSTAGRAM_SCRAP_RESULT } from "../../ipc.constant";
 
 const INSTA_LOGIN_URL = "https://instagram.com/accounts/login";
 const INSTA_URL = "https://instagram.com/";
@@ -41,14 +45,14 @@ export const getSignedInUser = async (
 
 export const scrapFeed = async (
   e: Electron.IpcMainInvokeEvent,
-  { signedId, feeds, rootDir }: ScrapInput
+  { signedId, scrapFields, rootDir, key }: ScrapInfo
 ) => {
   let browser: Browser;
   let page: Page;
   try {
     const { username, password } = await findUserById(signedId);
     browser = await createBrowser({
-      blockResources: [],
+      blockResources: ["media", "image"],
       dirPrefix: "insta",
       username,
     });
@@ -61,98 +65,174 @@ export const scrapFeed = async (
       await waitFor(1000);
     }
 
-    for (const feed of feeds) {
-      await waitFor(1000);
-      await page.goto(feed.feedUri, { waitUntil: "networkidle2" });
+    for (const scrapField of scrapFields) {
+      await page.goto(scrapField.feedUri, { waitUntil: "networkidle2" });
       await checkDismiss(page, INSTA_URL);
+
       const mediaContents: { isVideo: boolean; src: string }[] = [];
       let imgCount = 0;
       let videoCount = 0;
+      let account = "";
+      let downloadPath = "";
 
-      const { outputPath, account } = await downloadTextContent(
-        page,
-        rootDir,
-        feed.dirName
-      );
+      const scrapResult: ScrapResult = {
+        id: scrapField.id,
+        key,
+        status: ScrapStatus.SUCCESS,
+        message: "",
+      };
+
+      try {
+        account = await page.evaluate(() => {
+          const accountEl = document.querySelector("main span a");
+          return accountEl ? (accountEl as HTMLAnchorElement).textContent : "";
+        });
+      } catch (e) {
+        scrapResult.message = `계정 추출 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      try {
+        downloadPath = scrapField.dirName
+          ? path.join(rootDir, `(${scrapField.id}) ${scrapField.dirName}`)
+          : path.join(rootDir, `(${scrapField.id}) ${account}`);
+
+        await fsPromise.mkdir(downloadPath, { recursive: true });
+      } catch (e) {
+        scrapResult.message = `디렉터리 생성 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      try {
+        await downloadTextContent(page, account, downloadPath);
+      } catch (e) {
+        scrapResult.message = `텍스트 컨텐츠 다운로드 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
 
       //미디어 게시물 추출
       let worker = true;
-      while (worker) {
-        const medias = await page.evaluate(() => {
-          const videos = Array.from(document.querySelectorAll("video")).map(
-            (video) => ({
-              isVideo: true,
-              src: video.src || video.getAttribute("src"),
-            })
-          );
+      try {
+        while (worker) {
+          let tempMedias: { isVideo: boolean; src: string }[] = [];
+          try {
+            tempMedias = await page.evaluate(() => {
+              const videos = Array.from(document.querySelectorAll("video")).map(
+                (video) => ({
+                  isVideo: true,
+                  src: video.src || video.getAttribute("src"),
+                })
+              );
+              const imgs = Array.from(
+                document.querySelectorAll("[role^='presentation'] img")
+              )
+                .filter((img) => !img.hasAttribute("alt")) // alt 속성이 없는 이미지만 필터링
+                .map((img) => ({
+                  isVideo: false,
+                  src: (img as HTMLImageElement).src || img.getAttribute("src"),
+                }));
 
-          const imgs = Array.from(
-            document.querySelectorAll("[role^='presentation'] img")
-          )
-            .filter((img) => !img.hasAttribute("alt")) // alt 속성이 없는 이미지만 필터링
-            .map((img) => ({
-              isVideo: false,
-              src: (img as HTMLImageElement).src || img.getAttribute("src"),
-            }));
-
-          return [...videos, ...imgs];
-        });
-
-        // 중복되지 않는 src만 mediaContents 배열에 추가
-        medias.forEach((media) => {
-          if (!mediaContents.some((item) => item.src === media.src)) {
-            mediaContents.push(media);
+              return [...videos, ...imgs];
+            });
+          } catch (e) {
+            throw new Error(`미디어 컨텐츠 추출 실패 : ${e.message}`);
           }
-        });
-
-        try {
-          // 다음 버튼 클릭을 시도. (다음 미디어로 이동)
-          const nextButton = await page.$("[aria-label^='Next']");
-          if (nextButton) {
-            await nextButton.click();
-            // 페이지 로딩 대기
-            await waitFor(1000);
-          } else {
-            worker = false; // 다음 버튼이 없으면 반복 종료
-          }
-        } catch (error) {
-          console.log(error);
-          worker = false; // 오류 발생 시 반복 종료
-        }
-      }
-      await Promise.all(
-        mediaContents.map(async (media) => {
-          const fileName = media.isVideo
-            ? `${++videoCount}.mp4`
-            : `${++imgCount}.jpg`;
-          let watermarkText: string;
-          if (!media.isVideo) {
-            switch (feed.mark) {
-              case MarkStatus.AD:
-                watermarkText = "광고";
-                break;
-              case MarkStatus.ORIGIN:
-                watermarkText = `@${account}`;
-                break;
-              case MarkStatus.RE_GRAM:
-                watermarkText = "리그램";
-                break;
-              case MarkStatus.SPONSOR:
-                watermarkText = "협찬";
-                break;
-              case MarkStatus.NONE:
-              default:
-                break;
+          console.log("tempMedia:", tempMedias);
+          // 중복되지 않는 src만 mediaContents 배열에 추가
+          tempMedias.forEach((media) => {
+            if (!mediaContents.some((item) => item.src === media.src)) {
+              mediaContents.push(media);
             }
+          });
+          console.log("mediaContents:", mediaContents);
+
+          try {
+            // 다음 버튼 클릭을 시도. (다음 미디어로 이동)
+            const nextButton = await page.$("[aria-label^='Next']");
+            if (nextButton) {
+              await nextButton.click();
+              // 페이지 로딩 대기
+              await waitFor(1000);
+            } else {
+              worker = false; // 다음 버튼이 없으면 반복 종료
+            }
+          } catch (error) {
+            worker = false; // 오류 발생 시 반복 종료
           }
-          await downloadMediaContent(
-            media.src,
-            outputPath,
-            fileName,
-            watermarkText
-          );
-        })
-      );
+        }
+      } catch (e) {
+        worker = false;
+        scrapResult.message = e.message;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      try {
+        await Promise.all(
+          mediaContents.map(async (media) => {
+            const fileName = media.isVideo
+              ? `${++videoCount}.mp4`
+              : `${++imgCount}.jpg`;
+            let watermarkText: string;
+            if (!media.isVideo) {
+              switch (scrapField.mark) {
+                case MarkStatus.AD:
+                  watermarkText = "광고";
+                  break;
+                case MarkStatus.ORIGIN:
+                  watermarkText = `@${account}`;
+                  break;
+                case MarkStatus.RE_GRAM:
+                  watermarkText = "리그램";
+                  break;
+                case MarkStatus.SPONSOR:
+                  watermarkText = "협찬";
+                  break;
+                case MarkStatus.NONE:
+                default:
+                  break;
+              }
+            }
+            await downloadMediaContent(
+              media.src,
+              downloadPath,
+              fileName,
+              watermarkText
+            );
+          })
+        );
+      } catch (e) {
+        scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      scrapResult.message = "컨텐츠 저장 성공.";
+      mainWindow.webContents.send(CHANNEL_INSTAGRAM_SCRAP_RESULT, scrapResult);
+      await waitFor(1500);
     }
 
     await page.close();
@@ -258,45 +338,38 @@ export const instagramSignIn = async (
 //다운로드 컨텐츠
 const downloadTextContent = async (
   page: Page,
-  rootPath: string,
-  dirName?: string
+  account: string,
+  downloadPath: string
 ) => {
   //게시물의 소유 계정과 텍스트 컨테츠 추출
-  const { account, textContent } = await page.evaluate(async () => {
+  const { textContent } = await page.evaluate(async (account) => {
     const spans = document.querySelectorAll("main span");
     const moreEl = Array.from(spans).find(
       (span) => (span as HTMLSpanElement).innerText === "more"
     );
     if (moreEl) {
       (moreEl as HTMLSpanElement).click();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    const accountEl = document.querySelector("main span a");
     const textContentEl = document.querySelector("main span h1");
+    let textContent: string;
+    if (textContentEl) {
+      textContent = `@${account}\r\n${(
+        textContentEl as HTMLHeadElement
+      ).innerText.normalize("NFC")}`;
+    } else {
+      textContent = `@${account}\r\n`;
+    }
     return {
-      account: accountEl ? accountEl.textContent : "",
-      textContent: textContentEl
-        ? (textContentEl as HTMLHeadElement).innerText
-        : "",
+      textContent,
     };
-  });
+  }, account);
 
-  const finalDownloadPath = dirName
-    ? path.join(rootPath, dirName)
-    : path.join(rootPath, `${account}-${Date.now()}`);
-  await fsPromise.mkdir(finalDownloadPath, { recursive: true });
-
-  const normalizedTextContent = textContent.normalize("NFC");
   await fsPromise.writeFile(
-    path.join(finalDownloadPath, "textContent.txt"),
-    normalizedTextContent,
+    path.join(downloadPath, "textContent.txt"),
+    textContent,
     "utf-8"
   );
-
-  return {
-    account,
-    outputPath: finalDownloadPath,
-  };
 };
 const downloadMediaContent = async (
   url: string,
@@ -340,8 +413,8 @@ const signInByAccount = async (
   page: Page
 ): Promise<{ userId: number; error?: string }> => {
   try {
-    await page.type("input[name='username']", username, { delay: 50 });
-    await page.type("input[name='password']", password, { delay: 50 });
+    await page.type("scrapField[name='username']", username, { delay: 50 });
+    await page.type("scrapField[name='password']", password, { delay: 50 });
     await waitFor(500);
     await page.click("button[type='submit']");
 

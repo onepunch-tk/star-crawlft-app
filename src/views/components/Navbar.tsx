@@ -25,7 +25,7 @@ export function Navbar({ username }: NavbarProps) {
                   "border-b border-orange-400"
               )}
             >
-              <span>Home</span>
+              <span>홈</span>
             </div>
           ) : null}
           <div
@@ -36,7 +36,17 @@ export function Navbar({ username }: NavbarProps) {
                 "border-b border-orange-400"
             )}
           >
-            <span>{username ? "New Sign In" : "Sign In"}</span>
+            <span>{username ? "다른 계정 로그인" : "로그인"}</span>
+          </div>
+          <div
+            onClick={() => navigate(Path.HISTORY)}
+            className={cls(
+              "cursor-pointer font-semibold transition-[transform] duration-300 hover:scale-110",
+              currentPathName.includes(Path.HISTORY) &&
+                "border-b border-orange-400"
+            )}
+          >
+            <span>작업 결과</span>
           </div>
         </div>
       </div>

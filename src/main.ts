@@ -21,11 +21,14 @@ if (require("electron-squirrel-startup")) {
   app.quit();
 }
 
+export let mainWindow: BrowserWindow;
+
 const createWindow = async () => {
+  await initializeDatabase();
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
-    height: 720,
+    height: 1280,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
@@ -33,17 +36,15 @@ const createWindow = async () => {
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    await mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     // Open the DevTools.
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(
+    await mainWindow.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
       { hash: "/" }
     );
   }
-
-  await initializeDatabase();
 };
 
 app.on("ready", createWindow);

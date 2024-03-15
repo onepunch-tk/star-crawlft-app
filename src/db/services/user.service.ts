@@ -33,8 +33,10 @@ export const initializeUserIfNeed = async (
 
 export const findSignedInUser = async () => {
   try {
+    console.log("called findSignedInUser");
     return await User.findOne({ where: { status: "signIn" } });
-  } catch {
+  } catch (e) {
+    console.log(e.message);
     return null;
   }
 };

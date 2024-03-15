@@ -17,18 +17,33 @@ export enum MarkStatus {
   NONE = "none",
 }
 
-export interface FeedInfo {
-  dirName?: string;
-  feedUri: string;
-  mark: MarkStatus;
+export enum ScrapStatus {
+  SUCCESS = "SUCCESS",
+  FAILURE = "FAILURE",
 }
-export interface ScrapInput {
+
+export interface ScrapField {
+  id: number;
+  feedUri: string;
+  dirName?: string;
+  mark: MarkStatus;
+  message?: string;
+}
+export interface ScrapInfo {
   rootDir: string;
+  key: string;
   signedId: number;
-  feeds: FeedInfo[];
+  scrapFields: ScrapField[];
 }
 
 export interface SignInResponse extends CommonResponse {
   userId?: number;
   username?: string;
+}
+
+export interface ScrapResult {
+  id: number;
+  key: string;
+  status: ScrapStatus;
+  message: string;
 }

@@ -5,4 +5,6 @@ export const CHANNEL_INSTAGRAM_SCRAP = `${CHANNEL_INSTAGRAM}/scrap-feed`;
 export const CHANNEL_INSTAGRAM_SIGNED_IN_USER = `${CHANNEL_INSTAGRAM}/signed-in-user`;
 export const CHANNEL_INSTAGRAM_GET_USER_BY_ID = `${CHANNEL_INSTAGRAM}/user`;
 
+export const CHANNEL_INSTAGRAM_SCRAP_RESULT = `${CHANNEL_INSTAGRAM}/scrap-result`;
+
 export const OPEN_DIALOG = "open-dialog";

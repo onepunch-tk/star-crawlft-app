@@ -5,10 +5,12 @@ import { useRecoilValue } from "recoil";
 import { SignIn } from "./SignIn";
 import { Home } from "./Home";
 import { Navbar } from "../components/Navbar";
+import { History } from "./History";
 
 export enum Path {
   SIGN_IN = "sign-in",
   HOME = "home",
+  HISTORY = "history",
 }
 export const router = createHashRouter([
   {
@@ -22,6 +24,10 @@ export const router = createHashRouter([
       {
         path: Path.HOME,
         element: <Home />,
+      },
+      {
+        path: Path.HISTORY,
+        element: <History />,
       },
     ],
   },

@@ -10,6 +10,7 @@ export const authenticationEffect: AtomEffect<SignedInUser | null> = ({
       const user = await window[
         API_STAR_CRAWLFT
       ].instagramApi.getSignedInUser();
+      console.log("found user:", user);
       if (user) {
         const { username, id: userId } = user.dataValues;
         setSelf({ username, userId }); // 비동기 호출 결과를 사용해 상태를 설정합니다.
