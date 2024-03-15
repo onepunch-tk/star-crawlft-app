@@ -43,6 +43,7 @@ export function SignIn() {
       password,
       currentUserId: signedUser ? signedUser.userId : undefined,
     });
+    console.log(ok, error);
     if (ok) {
       const authUser = await window[
         API_STAR_CRAWLFT
@@ -52,6 +53,7 @@ export function SignIn() {
         setSignedIn({ username, userId: id });
         navigate(Path.HOME);
       }
+      console.log(authUser);
     }
 
     setIsWorking(false);

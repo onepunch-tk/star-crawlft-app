@@ -74,6 +74,9 @@ export const createPage = async (browser: Browser, isMobile: boolean) => {
     await page.emulate(iPhone);
     // await page.setUserAgent(MAC_USER_AGENT);
     // await page.setViewport({ width: 1920, height: 1080 });
+  } else {
+    await page.setUserAgent(MAC_USER_AGENT);
+    await page.setViewport({ width: 1920, height: 1080 });
   }
   return page;
 };
