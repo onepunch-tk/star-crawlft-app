@@ -17,9 +17,9 @@ import {
 import { openDialog } from "./utils/ipc/handlers/common.handle";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require("electron-squirrel-startup")) {
-  app.quit();
-}
+// if (require("electron-squirrel-startup")) {
+//   app.quit();
+// }
 
 export let mainWindow: BrowserWindow;
 
@@ -38,13 +38,13 @@ const createWindow = async () => {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     // Open the DevTools.
-    mainWindow.webContents.openDevTools();
   } else {
     await mainWindow.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
       { hash: "/" }
     );
   }
+  mainWindow.webContents.openDevTools();
 };
 
 app.on("ready", createWindow);
