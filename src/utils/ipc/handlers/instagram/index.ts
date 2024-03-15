@@ -267,8 +267,15 @@ export const instagramSignIn = async (
       dirPrefix: "insta",
       username,
     });
+    if (!browser) {
+      throw new Error("Browser 생성 실패");
+    }
     //page = await createPage(browser, false);
     page = await browser.newPage();
+
+    if (!page) {
+      throw new Error("page 생성 실패");
+    }
 
     await page.goto(INSTA_LOGIN_URL, { waitUntil: "networkidle2" });
 
@@ -328,6 +335,8 @@ export const instagramSignIn = async (
       }
     }
   } catch (e) {
+    page && (await page.close());
+    browser && (await browser.close());
     return {
       ok: false,
       error: e.message,
