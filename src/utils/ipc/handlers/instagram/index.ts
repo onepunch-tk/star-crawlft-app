@@ -267,7 +267,8 @@ export const instagramSignIn = async (
       dirPrefix: "insta",
       username,
     });
-    page = await createPage(browser, false);
+    //page = await createPage(browser, false);
+    page = await browser.newPage();
 
     await page.goto(INSTA_LOGIN_URL, { waitUntil: "networkidle2" });
 

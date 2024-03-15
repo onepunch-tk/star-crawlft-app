@@ -44,7 +44,6 @@ export const createBrowser = async ({
     headless: false,
     args,
     channel: "chrome",
-    product: "chrome",
   });
 
   if (permission) {
