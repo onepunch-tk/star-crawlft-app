@@ -44,6 +44,8 @@ export const createBrowser = async ({
   const browser = await puppeteer.launch({
     headless,
     args,
+    channel: "chrome",
+    product: "chrome",
   });
 
   if (permission) {
