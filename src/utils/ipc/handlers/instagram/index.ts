@@ -150,6 +150,7 @@ export const scrapFeed = async (
               return [...videos, ...imgs];
             });
           } catch (e) {
+            worker = false;
             throw new Error(`미디어 컨텐츠 추출 실패 : ${e.message}`);
           }
           console.log("tempMedia:", tempMedias);
@@ -169,10 +170,12 @@ export const scrapFeed = async (
               // 페이지 로딩 대기
               await waitFor(1000);
             } else {
-              worker = false; // 다음 버튼이 없으면 반복 종료
+              worker = false;
+              break; // 다음 버튼이 없으면 반복 종료
             }
           } catch (error) {
-            worker = false; // 오류 발생 시 반복 종료
+            worker = false;
+            break; // 오류 발생 시 반복 종료
           }
         }
       } catch (e) {
