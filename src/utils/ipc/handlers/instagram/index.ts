@@ -26,7 +26,7 @@ import { User } from "../../../../db/models/user.model";
 import fsPromise from "fs/promises";
 import { constants } from "fs";
 import path from "path";
-import { app } from "electron";
+import { app, Notification } from "electron";
 import sharp from "sharp";
 import { mainWindow } from "../../../../main";
 import { CHANNEL_INSTAGRAM_SCRAP_RESULT } from "../../ipc.constant";
@@ -255,24 +255,34 @@ export const instagramSignIn = async (
   let page: Page;
   try {
     const findUser = await findUserByUsername(username);
-    if (currentUserId && findUser.id === currentUserId) {
-      return {
-        userId: currentUserId,
-        ok: false,
-        error: "이미 로그인된 아이디 입니다.",
-      };
+    if (currentUserId) {
+      if (findUser && findUser.dataValues.id === currentUserId) {
+        return {
+          userId: currentUserId,
+          ok: false,
+          error: "이미 로그인된 아이디 입니다.",
+        };
+      }
     }
+
     browser = await createBrowser({
       blockResources: [],
       dirPrefix: "insta",
       username,
     });
+    const notification = new Notification({
+      title: "browser",
+      body: `${username} ${password} ${INSTA_LOGIN_URL}`,
+    });
+
     if (!browser) {
       throw new Error("Browser 생성 실패");
     }
     //page = await createPage(browser, false);
     await waitFor(500);
     page = await browser.newPage();
+
+    notification.show();
 
     if (!page) {
       throw new Error("page 생성 실패");
@@ -426,8 +436,8 @@ const signInByAccount = async (
   page: Page
 ): Promise<{ userId: number; error?: string }> => {
   try {
-    await page.type("scrapField[name='username']", username, { delay: 50 });
-    await page.type("scrapField[name='password']", password, { delay: 50 });
+    await page.type("input[name='username']", username, { delay: 50 });
+    await page.type("input[name='password']", password, { delay: 50 });
     await waitFor(500);
     await page.click("button[type='submit']");
 

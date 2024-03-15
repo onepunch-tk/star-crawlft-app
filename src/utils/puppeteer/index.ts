@@ -43,8 +43,7 @@ export const createBrowser = async ({
   const browser = await puppeteer.launch({
     headless: false,
     args,
-    executablePath:
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    channel: "chrome",
   });
 
   if (permission) {
