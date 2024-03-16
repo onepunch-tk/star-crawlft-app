@@ -8,11 +8,13 @@ import {
 } from "react";
 import { cls } from "../../utils/helpers";
 import {
+  MarkImgCount,
   MarkStatus,
   ScrapField,
   ScrapInfo,
   ScrapResult,
   ScrapStatus,
+  TextStatus,
 } from "../../utils/ipc/handlers/instagram/interface";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
@@ -23,6 +25,9 @@ import {
 import { Loading } from "../components/Loding";
 import { loadingMessageState } from "../../utils/recoil/loading-message/atoms";
 import { initializeScrapFields } from "../../utils/recoil/instagram/effects/scrap-work.effect";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faInstagram } from "@fortawesome/free-brands-svg-icons";
+import { faFileWord } from "@fortawesome/free-solid-svg-icons";
 
 interface InputContainerProps {
   scrapField: ScrapField;
@@ -42,7 +47,7 @@ const getScrapWorkingMessage = ({
 }>) =>
   `총 작업 수 : ${totalCount}\r\n성공 : ${successCount}\r\n실패 : ${failureCount}`;
 
-const getStatusName = (status: MarkStatus) => {
+const getMarkStatusName = (status: MarkStatus) => {
   switch (status) {
     case MarkStatus.AD:
       return "광고";
@@ -53,6 +58,19 @@ const getStatusName = (status: MarkStatus) => {
     case MarkStatus.SPONSOR:
       return "협찬";
     case MarkStatus.NONE:
+      return "none";
+  }
+};
+
+const getTextStatusName = (status: TextStatus) => {
+  switch (status) {
+    case TextStatus.RE_GRAM:
+      return "리그램";
+    case TextStatus.ACCOUNT:
+      return "계정";
+    case TextStatus.RE_GRAM_AND_ACCOUNT:
+      return "리그램 + 계정";
+    case TextStatus.NONE:
       return "none";
   }
 };
@@ -68,7 +86,7 @@ function InputContainer({ scrapField, onInputChange }: InputContainerProps) {
     <div
       key={scrapField.id}
       className={cls(
-        "relative flex w-[30rem] flex-col space-y-5 rounded-lg bg-neutral-700 p-5 shadow-lg shadow-neutral-900"
+        "relative flex w-[20rem] flex-col space-y-5 rounded-lg bg-neutral-700 p-5 shadow-lg shadow-neutral-900"
       )}
     >
       <div
@@ -100,21 +118,21 @@ function InputContainer({ scrapField, onInputChange }: InputContainerProps) {
           onChange={(e) => handleFieldChange(e, "dirName")}
         />
       </div>
-      <div className={cls("flex justify-around")}>
-        {Object.values(MarkStatus).map((status) => (
-          <label key={status}>
-            <input
-              type="radio"
-              name={`markStatus-${scrapField.id}`}
-              value={status}
-              checked={scrapField.mark === status}
-              onChange={(e) => handleFieldChange(e, "mark")}
-              className={cls("mr-1.5")}
-            />
-            {getStatusName(status)}
-          </label>
-        ))}
-      </div>
+      {/*<div className={cls("flex justify-around")}>*/}
+      {/*  {Object.values(MarkStatus).map((status) => (*/}
+      {/*    <label key={status}>*/}
+      {/*      <input*/}
+      {/*        type="radio"*/}
+      {/*        name={`markStatus-${scrapField.id}`}*/}
+      {/*        value={status}*/}
+      {/*        checked={scrapField.mark === status}*/}
+      {/*        onChange={(e) => handleFieldChange(e, "mark")}*/}
+      {/*        className={cls("mr-1.5")}*/}
+      {/*      />*/}
+      {/*      {getStatusName(status)}*/}
+      {/*    </label>*/}
+      {/*  ))}*/}
+      {/*</div>*/}
       {/*<button*/}
       {/*  type="button"*/}
       {/*  className={cls(*/}
@@ -133,6 +151,11 @@ export function Home() {
   const [totalMarkStatus, setTotalMarkStatus] = useState<MarkStatus>(
     MarkStatus.NONE
   );
+  const [totalTextStatus, setTotalTextStatus] = useState<TextStatus>(
+    TextStatus.NONE
+  );
+  const [useText, setUseText] = useState<string>("");
+  const [markCount, setMarkCount] = useState<MarkImgCount>(MarkImgCount.FIRST);
   const setScrapResults = useSetRecoilState(scrapResultState);
   const workingCountRef = useRef<{
     totalCount: number;
@@ -199,11 +222,6 @@ export function Home() {
   };
   const handleSelectRootDir = async () => {
     const selectDir = await window[API_STAR_CRAWLFT].instagramApi.openDialog();
-    setScrapResults((prev) => {
-      const findHistory = prev.find((h) => h.key === "test");
-      console.log(findHistory);
-      return [...prev];
-    });
     setRootDir(selectDir);
   };
   const addInput = (addCount = 1): void => {
@@ -214,6 +232,8 @@ export function Home() {
         id: ++lastId,
         feedUri: "",
         mark: totalMarkStatus,
+        textStatus: totalTextStatus,
+        markCount,
       };
       newFields.push(newField);
     }
@@ -240,6 +260,8 @@ export function Home() {
   const fieldRestHandle = () => {
     setRootDir("");
     setTotalMarkStatus(MarkStatus.NONE);
+    setTotalTextStatus(TextStatus.NONE);
+    setUseText("");
     setScrapWorkInfo({
       isWorking: false,
       scrapWorkList: initializeScrapFields(),
@@ -257,17 +279,6 @@ export function Home() {
       }
       return input;
     });
-    setScrapWorkInfo((prev) => ({
-      ...prev,
-      scrapWorkList: updatedInputs,
-    }));
-  };
-
-  const handleTotalMarkChange = () => {
-    const updatedInputs = scrapWorkInfo.scrapWorkList.map((input) => {
-      return { ...input, mark: totalMarkStatus };
-    });
-
     setScrapWorkInfo((prev) => ({
       ...prev,
       scrapWorkList: updatedInputs,
@@ -302,9 +313,22 @@ export function Home() {
       ":" +
       String(date.getSeconds()).padStart(2, "0");
 
-    const workingScrapFields = scrapWorkInfo.scrapWorkList.filter((input) => {
+    const filteredScrapFields = scrapWorkInfo.scrapWorkList.filter((input) => {
       return input.feedUri !== "";
     });
+    const workingScrapFields = filteredScrapFields.map((input) => {
+      return {
+        ...input,
+        mark: totalMarkStatus,
+        textStatus: totalTextStatus,
+        markCount,
+        useText,
+      };
+    });
+
+    if (workingScrapFields.length <= 0) {
+      return;
+    }
     const scrapInput: ScrapInfo = {
       rootDir,
       key: formattedKey,
@@ -422,7 +446,14 @@ export function Home() {
               필드 리셋
             </button>
           </div>
-          <div className={cls("flex items-center")}>
+          <div
+            className={cls(
+              "flex flex-col justify-center space-y-2 border border-orange-400 p-5"
+            )}
+          >
+            <div>
+              <FontAwesomeIcon icon={faInstagram} size={"xl"} />
+            </div>
             <div className={cls("space-x-3")}>
               {Object.values(MarkStatus).map((status) => (
                 <label key={status}>
@@ -433,26 +464,68 @@ export function Home() {
                     onChange={() => setTotalMarkStatus(status)}
                     className={cls("mr-1.5")}
                   />
-                  {getStatusName(status)}
+                  {getMarkStatusName(status)}
+                </label>
+              ))}
+              <input
+                placeholder="사용자 정의 텍스트..."
+                className={cls(
+                  "border-b border-orange-400 bg-neutral-800 placeholder:text-sm placeholder:opacity-60"
+                )}
+                value={useText}
+                onChange={(e) => setUseText(e.currentTarget.value)}
+                type={"text"}
+              />
+            </div>
+            <div>
+              <h3 className={cls("text-xs font-semibold text-red-700")}>
+                *text field 입력시 우선 순위는 "사용자 정의 텍스트"
+              </h3>
+            </div>
+            <div className={cls("space-x-3")}>
+              {Object.values(MarkImgCount).map((status) => (
+                <label key={status}>
+                  <input
+                    type="radio"
+                    value={status}
+                    checked={markCount === status}
+                    onChange={() => setMarkCount(status)}
+                    className={cls("mr-1.5")}
+                  />
+                  {status === MarkImgCount.FIRST ? "한장" : "전체"}
                 </label>
               ))}
             </div>
-            <button
-              className={cls(
-                "ml-5 rounded-lg bg-green-800 px-5 py-2 font-bold shadow-lg shadow-neutral-900 transition-[transform] duration-300 hover:scale-110"
-              )}
-              type="button"
-              onClick={handleTotalMarkChange}
-            >
-              전체 적용
-            </button>
+          </div>
+          <div
+            className={cls(
+              "flex flex-col justify-center space-y-2 border border-orange-400 p-5"
+            )}
+          >
+            <div>
+              <FontAwesomeIcon icon={faFileWord} size={"xl"} />
+            </div>
+            <div className={cls("space-x-3")}>
+              {Object.values(TextStatus).map((status) => (
+                <label key={status}>
+                  <input
+                    type="radio"
+                    value={status}
+                    checked={totalTextStatus === status}
+                    onChange={() => setTotalTextStatus(status)}
+                    className={cls("mr-1.5")}
+                  />
+                  {getTextStatusName(status)}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
       </div>
       <form
         id={"scrapForm"}
         onSubmit={handleSubmit}
-        className={cls("grid grid-cols-2 items-center justify-center gap-5")}
+        className={cls("grid grid-cols-3 items-center justify-center gap-5")}
       >
         {scrapWorkInfo.scrapWorkList.map((scrapField) => (
           <InputContainer

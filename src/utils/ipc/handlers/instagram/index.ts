@@ -7,12 +7,14 @@ import {
   waitFor,
 } from "../../../puppeteer";
 import {
+  MarkImgCount,
   MarkStatus,
   ScrapInfo,
   ScrapResult,
   ScrapStatus,
   SignInInput,
   SignInResponse,
+  TextStatus,
 } from "./interface";
 import {
   createUser,
@@ -52,7 +54,7 @@ export const scrapFeed = async (
   try {
     const { username, password } = await findUserById(signedId);
     browser = await createBrowser({
-      blockResources: ["media", "image"],
+      blockResources: [],
       dirPrefix: "insta",
       username,
     });
@@ -66,7 +68,24 @@ export const scrapFeed = async (
     }
 
     for (const scrapField of scrapFields) {
-      await page.goto(scrapField.feedUri, { waitUntil: "networkidle2" });
+      const scrapResult: ScrapResult = {
+        id: scrapField.id,
+        key,
+        status: ScrapStatus.SUCCESS,
+        message: "",
+      };
+
+      try {
+        await page.goto(scrapField.feedUri, { waitUntil: "networkidle2" });
+      } catch (e) {
+        scrapResult.message = `잘못된 게시물 주소 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
       await checkDismiss(page, INSTA_URL);
 
       const mediaContents: { isVideo: boolean; src: string }[] = [];
@@ -74,13 +93,6 @@ export const scrapFeed = async (
       let videoCount = 0;
       let account = "";
       let downloadPath = "";
-
-      const scrapResult: ScrapResult = {
-        id: scrapField.id,
-        key,
-        status: ScrapStatus.SUCCESS,
-        message: "",
-      };
 
       try {
         account = await page.evaluate(() => {
@@ -114,7 +126,12 @@ export const scrapFeed = async (
       }
 
       try {
-        await downloadTextContent(page, account, downloadPath);
+        await downloadTextContent(
+          page,
+          scrapField.textStatus,
+          account,
+          downloadPath
+        );
       } catch (e) {
         scrapResult.message = `텍스트 컨텐츠 다운로드 실패 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
@@ -138,13 +155,15 @@ export const scrapFeed = async (
                   src: video.src || video.getAttribute("src"),
                 })
               );
-              const imgs = Array.from(
-                document.querySelectorAll("[role^='presentation'] img")
-              )
-                .filter((img) => !img.hasAttribute("alt")) // alt 속성이 없는 이미지만 필터링
+              const imgs = Array.from(document.querySelectorAll("img"))
+                .filter(
+                  (img) =>
+                    !img.hasAttribute("alt") &&
+                    img.src.includes("https://scontent.cdninstagram.com")
+                ) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
                 .map((img) => ({
-                  isVideo: false,
-                  src: (img as HTMLImageElement).src || img.getAttribute("src"),
+                  isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
+                  src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.
                 }));
 
               return [...videos, ...imgs];
@@ -190,39 +209,96 @@ export const scrapFeed = async (
       }
 
       try {
+        const filterImgs = mediaContents.filter((media) => !media.isVideo);
+        const filterVideos = mediaContents.filter((media) => media.isVideo);
         await Promise.all(
-          mediaContents.map(async (media) => {
-            const fileName = media.isVideo
-              ? `${++videoCount}.mp4`
-              : `${++imgCount}.jpg`;
+          filterImgs.map(async (img, index) => {
+            const fileName = `${++imgCount}.jpg`;
             let watermarkText: string;
-            if (!media.isVideo) {
-              switch (scrapField.mark) {
-                case MarkStatus.AD:
-                  watermarkText = "광고";
-                  break;
-                case MarkStatus.ORIGIN:
-                  watermarkText = `@${account}`;
-                  break;
-                case MarkStatus.RE_GRAM:
-                  watermarkText = "리그램";
-                  break;
-                case MarkStatus.SPONSOR:
-                  watermarkText = "협찬";
-                  break;
-                case MarkStatus.NONE:
-                default:
-                  break;
-              }
+            switch (scrapField.mark) {
+              case MarkStatus.AD:
+                watermarkText = "광고";
+                break;
+              case MarkStatus.ORIGIN:
+                watermarkText = `@${account}`;
+                break;
+              case MarkStatus.RE_GRAM:
+                watermarkText = "리그램";
+                break;
+              case MarkStatus.SPONSOR:
+                watermarkText = "협찬";
+                break;
+              case MarkStatus.NONE:
+              default:
+                break;
             }
+
+            if (scrapField.useText) {
+              console.log("scrapField.useText");
+              watermarkText = scrapField.useText;
+            }
+
+            if (imgCount > 1 && scrapField.markCount === MarkImgCount.FIRST) {
+              watermarkText = "";
+            }
+
             await downloadMediaContent(
-              media.src,
+              img.src,
               downloadPath,
               fileName,
               watermarkText
             );
           })
         );
+        await Promise.all(
+          filterVideos.map(async (video) => {
+            const fileName = `${++videoCount}.mp4`;
+            await downloadMediaContent(video.src, downloadPath, fileName, "");
+          })
+        );
+
+        // await Promise.all(
+        //   mediaContents.map(async (media, index) => {
+        //     const fileName = media.isVideo
+        //       ? `${++videoCount}.mp4`
+        //       : `${++imgCount}.jpg`;
+        //     let watermarkText: string;
+        //     if (!media.isVideo) {
+        //       switch (scrapField.mark) {
+        //         case MarkStatus.AD:
+        //           watermarkText = "광고";
+        //           break;
+        //         case MarkStatus.ORIGIN:
+        //           watermarkText = `@${account}`;
+        //           break;
+        //         case MarkStatus.RE_GRAM:
+        //           watermarkText = "리그램";
+        //           break;
+        //         case MarkStatus.SPONSOR:
+        //           watermarkText = "협찬";
+        //           break;
+        //         case MarkStatus.NONE:
+        //         default:
+        //           break;
+        //       }
+        //     }
+        //
+        //     if (scrapField.useText) {
+        //       watermarkText = scrapField.useText;
+        //     }
+        //
+        //     if (index > 0 && scrapField.markCount === MarkImgCount.FIRST) {
+        //       watermarkText = "";
+        //     }
+        //
+        //     await downloadMediaContent(
+        //       media.src,
+        //       downloadPath,
+        //       fileName,
+        //       watermarkText
+        //     );
+        //   })
+        // );
       } catch (e) {
         scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
@@ -241,7 +317,6 @@ export const scrapFeed = async (
     await page.close();
     await browser.close();
   } catch (e) {
-    console.error(e);
     page && (await page.close());
     browser && (await page.close());
   }
@@ -357,11 +432,28 @@ export const instagramSignIn = async (
 //다운로드 컨텐츠
 const downloadTextContent = async (
   page: Page,
+  textStatus: TextStatus,
   account: string,
   downloadPath: string
 ) => {
   //게시물의 소유 계정과 텍스트 컨테츠 추출
-  const { textContent } = await page.evaluate(async (account) => {
+  let inText: string;
+  switch (textStatus) {
+    case TextStatus.ACCOUNT:
+      inText = `@${account}`;
+      break;
+    case TextStatus.RE_GRAM:
+      inText = "(리그램)";
+      break;
+    case TextStatus.RE_GRAM_AND_ACCOUNT:
+      inText = `(리그램) @${account}`;
+      break;
+    case TextStatus.NONE:
+      inText = "";
+      break;
+  }
+
+  const { textContent } = await page.evaluate(async (inText) => {
     const spans = document.querySelectorAll("main span");
     const moreEl = Array.from(spans).find(
       (span) => (span as HTMLSpanElement).innerText === "more"
@@ -371,18 +463,20 @@ const downloadTextContent = async (
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     const textContentEl = document.querySelector("main span h1");
+
     let textContent: string;
+
     if (textContentEl) {
-      textContent = `@${account}\r\n${(
+      textContent = `${inText}\r\n${(
         textContentEl as HTMLHeadElement
       ).innerText.normalize("NFC")}`;
     } else {
-      textContent = `@${account}\r\n`;
+      textContent = `${inText}\r\n`;
     }
     return {
       textContent,
     };
-  }, account);
+  }, inText);
 
   await fsPromise.writeFile(
     path.join(downloadPath, "textContent.txt"),
@@ -406,7 +500,7 @@ const downloadMediaContent = async (
       .composite([
         {
           input: Buffer.from(`<svg width="1000" height="800">
-            <text x="50" y="80" font-size="42" fill="white" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
+            <text x="5" y="29" font-size="24" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
           </svg>`),
           gravity: "northwest",
         },

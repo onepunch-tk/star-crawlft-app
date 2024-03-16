@@ -17,6 +17,18 @@ export enum MarkStatus {
   NONE = "none",
 }
 
+export enum MarkImgCount {
+  FIRST = "first",
+  ALL = "all",
+}
+
+export enum TextStatus {
+  RE_GRAM = "reGram",
+  ACCOUNT = "account",
+  RE_GRAM_AND_ACCOUNT = "regramAndAccount",
+  NONE = "none",
+}
+
 export enum ScrapStatus {
   SUCCESS = "SUCCESS",
   FAILURE = "FAILURE",
@@ -27,6 +39,9 @@ export interface ScrapField {
   feedUri: string;
   dirName?: string;
   mark: MarkStatus;
+  markCount: MarkImgCount;
+  textStatus: TextStatus;
+  useText?: string;
   message?: string;
 }
 export interface ScrapInfo {

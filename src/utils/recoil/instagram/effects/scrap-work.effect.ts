@@ -1,8 +1,10 @@
 import { AtomEffect } from "recoil";
 import { ScrapWorkInfo } from "../atoms";
 import {
+  MarkImgCount,
   MarkStatus,
   ScrapField,
+  TextStatus,
 } from "../../../ipc/handlers/instagram/interface";
 
 export const initializeScrapFields = (): ScrapField[] => {
@@ -13,6 +15,8 @@ export const initializeScrapFields = (): ScrapField[] => {
       feedUri: "",
       dirName: "",
       mark: MarkStatus.NONE, // 'InitialMarkStatus'를 적절한 MarkStatus 값으로 대체하세요.
+      markCount: MarkImgCount.FIRST,
+      textStatus: TextStatus.NONE,
     });
   }
   return fields;
