@@ -54,7 +54,7 @@ export const scrapFeed = async (
   try {
     const { username, password } = await findUserById(signedId);
     browser = await createBrowser({
-      blockResources: [],
+      blockResources: ["image"],
       dirPrefix: "insta",
       username,
     });
@@ -76,7 +76,7 @@ export const scrapFeed = async (
       };
 
       try {
-        await page.goto(scrapField.feedUri, { waitUntil: "networkidle2" });
+        await page.goto(scrapField.feedUri, { waitUntil: "networkidle0" });
       } catch (e) {
         scrapResult.message = `잘못된 게시물 주소 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
@@ -148,26 +148,7 @@ export const scrapFeed = async (
         while (worker) {
           let tempMedias: { isVideo: boolean; src: string }[] = [];
           try {
-            tempMedias = await page.evaluate(() => {
-              const videos = Array.from(document.querySelectorAll("video")).map(
-                (video) => ({
-                  isVideo: true,
-                  src: video.src || video.getAttribute("src"),
-                })
-              );
-              const imgs = Array.from(document.querySelectorAll("img"))
-                .filter(
-                  (img) =>
-                    !img.hasAttribute("alt") &&
-                    img.src.includes("https://scontent.cdninstagram.com")
-                ) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
-                .map((img) => ({
-                  isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
-                  src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.
-                }));
-
-              return [...videos, ...imgs];
-            });
+            tempMedias = await mediaEvaluate(page, scrapField.feedUri, 1);
           } catch (e) {
             worker = false;
             throw new Error(`미디어 컨텐츠 추출 실패 : ${e.message}`);
@@ -207,7 +188,15 @@ export const scrapFeed = async (
         );
         continue;
       }
-
+      if(mediaContents.length === 0) {
+        scrapResult.message = "미디거 컨텐츠 찾을수 없음";
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+            CHANNEL_INSTAGRAM_SCRAP_RESULT,
+            scrapResult
+        );
+        continue;
+      }
       try {
         const filterImgs = mediaContents.filter((media) => !media.isVideo);
         const filterVideos = mediaContents.filter((media) => media.isVideo);
@@ -257,48 +246,6 @@ export const scrapFeed = async (
           })
         );
 
-        // await Promise.all(
-        //   mediaContents.map(async (media, index) => {
-        //     const fileName = media.isVideo
-        //       ? `${++videoCount}.mp4`
-        //       : `${++imgCount}.jpg`;
-        //     let watermarkText: string;
-        //     if (!media.isVideo) {
-        //       switch (scrapField.mark) {
-        //         case MarkStatus.AD:
-        //           watermarkText = "광고";
-        //           break;
-        //         case MarkStatus.ORIGIN:
-        //           watermarkText = `@${account}`;
-        //           break;
-        //         case MarkStatus.RE_GRAM:
-        //           watermarkText = "리그램";
-        //           break;
-        //         case MarkStatus.SPONSOR:
-        //           watermarkText = "협찬";
-        //           break;
-        //         case MarkStatus.NONE:
-        //         default:
-        //           break;
-        //       }
-        //     }
-        //
-        //     if (scrapField.useText) {
-        //       watermarkText = scrapField.useText;
-        //     }
-        //
-        //     if (index > 0 && scrapField.markCount === MarkImgCount.FIRST) {
-        //       watermarkText = "";
-        //     }
-        //
-        //     await downloadMediaContent(
-        //       media.src,
-        //       downloadPath,
-        //       fileName,
-        //       watermarkText
-        //     );
-        //   })
-        // );
       } catch (e) {
         scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
@@ -411,13 +358,10 @@ export const instagramSignIn = async (
           userId,
           ok: true,
         };
-      } else {
-        throw new Error("Not found login form.");
       }
     }
   } catch (e) {
-    page && (await page.close());
-    browser && (await browser.close());
+    console.error(e)
     return {
       ok: false,
       error: e.message,
@@ -496,16 +440,21 @@ const downloadMediaContent = async (
   const arrayBuffer = await response.arrayBuffer();
   const finalDownloadPath = path.join(outputPath, fileName);
   if (watermarkText) {
-    await sharp(Buffer.from(arrayBuffer))
-      .composite([
-        {
-          input: Buffer.from(`<svg width="1000" height="800">
-            <text x="5" y="29" font-size="24" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
-          </svg>`),
-          gravity: "northwest",
-        },
-      ])
-      .toFile(finalDownloadPath);
+    const image = sharp(Buffer.from(arrayBuffer));
+    const metadata = await image.metadata();
+
+    const svgWatermark = Buffer.from(`<svg width="${metadata.width}" height="${metadata.height}">
+      <text x="5" y="29" font-size="24" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
+    </svg>`);
+
+    await image
+        .composite([
+          {
+            input: svgWatermark,
+            gravity: "southeast",
+          },
+        ])
+        .toFile(finalDownloadPath);
   } else {
     await fsPromise.writeFile(finalDownloadPath, Buffer.from(arrayBuffer));
   }
@@ -520,6 +469,36 @@ const checkExistsAsync = async (path: string) => {
     return false;
   }
 };
+
+const mediaEvaluate = async (page:Page,uri:string, retryCount:number) => {
+  const RETRY_MAX_COUNT = 5;
+  const mediaList =  await page.evaluate(() => {
+    const videos = Array.from(document.querySelectorAll("video")).map(
+        (video) => ({
+          isVideo: true,
+          src: video.src || video.getAttribute("src"),
+        })
+    );
+    const imgs = Array.from(document.querySelectorAll("img"))
+        .filter(
+            (img) =>
+                !img.hasAttribute("alt") &&
+                img.src.includes("https://scontent.cdninstagram.com")
+        ) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
+        .map((img) => ({
+          isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
+          src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.
+        }));
+    return [...videos, ...imgs];
+  });
+  if(mediaList.length < 1 && retryCount <= RETRY_MAX_COUNT) {
+    await waitFor(1000);
+    await page.goto(uri, {waitUntil:"networkidle0"});
+    await mediaEvaluate(page, uri,retryCount+1);
+  }
+
+  return mediaList;
+}
 
 const signInByAccount = async (
   { username, password }: { username: string; password: string },

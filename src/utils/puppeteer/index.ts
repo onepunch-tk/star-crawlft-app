@@ -43,7 +43,7 @@ export const createBrowser = async ({
   const browser = await puppeteer.launch({
     headless,
     args,
-    channel: "chrome",
+    ...(!MAIN_WINDOW_VITE_DEV_SERVER_URL && {channel:"chrome"}),
   });
 
   if (permission) {
