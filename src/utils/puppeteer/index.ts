@@ -68,7 +68,7 @@ export const createPage = async (browser: Browser, isMobile: boolean) => {
   // User-Agent 문자열에 "Headless" 키워드가 포함되어 있는지 확인
 
   if (!getUserAgent.includes("Headless")) {
-    const iPhone = KnownDevices["iPad Pro 11"];
+    const iPhone = KnownDevices["iPhone 13 Pro Max"];
     await page.emulate(iPhone);
     // await page.setUserAgent(MAC_USER_AGENT);
     // await page.setViewport({ width: 1920, height: 1080 });
