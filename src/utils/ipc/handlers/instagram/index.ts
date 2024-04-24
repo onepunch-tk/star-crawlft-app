@@ -74,201 +74,201 @@ export const scrapFeed = async (
     //   await waitFor(1000);
     // }
 
-    // for (const scrapField of scrapFields) {
-    //   const scrapResult: ScrapResult = {
-    //     id: scrapField.id,
-    //     key,
-    //     status: ScrapStatus.SUCCESS,
-    //     message: "",
-    //   };
-    //
-    //   try {
-    //     await page.goto(scrapField.feedUri, { waitUntil: "networkidle0" });
-    //   } catch (e) {
-    //     scrapResult.message = `잘못된 게시물 주소 : ${e.message}`;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //   await checkDismiss(page, INSTA_URL);
-    //
-    //   const mediaContents: { isVideo: boolean; src: string }[] = [];
-    //   let imgCount = 0;
-    //   let videoCount = 0;
-    //   let account = "";
-    //   let downloadPath = "";
-    //
-    //   try {
-    //     account = await page.evaluate(() => {
-    //       const accountEl = document.querySelector("main span a");
-    //       return accountEl ? (accountEl as HTMLAnchorElement).textContent : "";
-    //     });
-    //   } catch (e) {
-    //     scrapResult.message = `계정 추출 실패 : ${e.message}`;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //
-    //   try {
-    //     downloadPath = scrapField.dirName
-    //       ? path.join(rootDir, `(${scrapField.id}) ${scrapField.dirName}`)
-    //       : path.join(rootDir, `(${scrapField.id}) ${account}`);
-    //
-    //     await fsPromise.mkdir(downloadPath, { recursive: true });
-    //   } catch (e) {
-    //     scrapResult.message = `디렉터리 생성 실패 : ${e.message}`;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //
-    //   try {
-    //     await downloadTextContent(
-    //       page,
-    //       scrapField.textStatus,
-    //       account,
-    //       downloadPath
-    //     );
-    //   } catch (e) {
-    //     scrapResult.message = `텍스트 컨텐츠 다운로드 실패 : ${e.message}`;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //
-    //   //미디어 게시물 추출
-    //   let worker = true;
-    //   try {
-    //     while (worker) {
-    //       let tempMedias: { isVideo: boolean; src: string }[] = [];
-    //       try {
-    //         tempMedias = await mediaEvaluate(page, scrapField.feedUri, 1);
-    //       } catch (e) {
-    //         worker = false;
-    //         throw new Error(`미디어 컨텐츠 추출 실패 : ${e.message}`);
-    //       }
-    //       console.log("tempMedia:", tempMedias);
-    //       // 중복되지 않는 src만 mediaContents 배열에 추가
-    //       tempMedias.forEach((media) => {
-    //         if (!mediaContents.some((item) => item.src === media.src)) {
-    //           mediaContents.push(media);
-    //         }
-    //       });
-    //       console.log("mediaContents:", mediaContents);
-    //
-    //       try {
-    //         // 다음 버튼 클릭을 시도. (다음 미디어로 이동)
-    //         const nextButton = await page.$("[aria-label^='Next']");
-    //         if (nextButton) {
-    //           await nextButton.click();
-    //           // 페이지 로딩 대기
-    //           await waitFor(1000);
-    //         } else {
-    //           worker = false;
-    //           break; // 다음 버튼이 없으면 반복 종료
-    //         }
-    //       } catch (error) {
-    //         worker = false;
-    //         break; // 오류 발생 시 반복 종료
-    //       }
-    //     }
-    //   } catch (e) {
-    //     worker = false;
-    //     scrapResult.message = e.message;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //   if(mediaContents.length === 0) {
-    //     scrapResult.message = "미디어 컨텐츠 찾을수 없음";
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //         CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //         scrapResult
-    //     );
-    //     continue;
-    //   }
-    //   try {
-    //     const filterImgs = mediaContents.filter((media) => !media.isVideo);
-    //     const filterVideos = mediaContents.filter((media) => media.isVideo);
-    //     await Promise.all(
-    //       filterImgs.map(async (img, index) => {
-    //         const fileName = `${++imgCount}.jpg`;
-    //         let watermarkText: string;
-    //         switch (scrapField.mark) {
-    //           case MarkStatus.AD:
-    //             watermarkText = "광고";
-    //             break;
-    //           case MarkStatus.ORIGIN:
-    //             watermarkText = `@${account}`;
-    //             break;
-    //           case MarkStatus.RE_GRAM:
-    //             watermarkText = "리그램";
-    //             break;
-    //           case MarkStatus.SPONSOR:
-    //             watermarkText = "협찬";
-    //             break;
-    //           case MarkStatus.NONE:
-    //           default:
-    //             break;
-    //         }
-    //
-    //         if (scrapField.useText) {
-    //           watermarkText = scrapField.useText;
-    //         }
-    //
-    //         if (imgCount > 1 && scrapField.markCount === MarkImgCount.FIRST) {
-    //           watermarkText = "";
-    //         }
-    //
-    //         await downloadMediaContent(
-    //           img.src,
-    //           downloadPath,
-    //           fileName,
-    //           watermarkText
-    //         );
-    //       })
-    //     );
-    //     await Promise.all(
-    //       filterVideos.map(async (video) => {
-    //         const fileName = `${++videoCount}.mp4`;
-    //         await downloadMediaContent(video.src, downloadPath, fileName, "");
-    //       })
-    //     );
-    //
-    //   } catch (e) {
-    //     scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
-    //     scrapResult.status = ScrapStatus.FAILURE;
-    //     mainWindow.webContents.send(
-    //       CHANNEL_INSTAGRAM_SCRAP_RESULT,
-    //       scrapResult
-    //     );
-    //     continue;
-    //   }
-    //
-    //   scrapResult.message = "컨텐츠 저장 성공.";
-    //   mainWindow.webContents.send(CHANNEL_INSTAGRAM_SCRAP_RESULT, scrapResult);
-    //   await waitFor(1500);
-    // }
-    //
-    // await page.close();
-    // await browser.close();
+    for (const scrapField of scrapFields) {
+      const scrapResult: ScrapResult = {
+        id: scrapField.id,
+        key,
+        status: ScrapStatus.SUCCESS,
+        message: "",
+      };
+
+      try {
+        await page.goto(scrapField.feedUri, { waitUntil: "networkidle0" });
+      } catch (e) {
+        scrapResult.message = `잘못된 게시물 주소 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+      await checkDismiss(page, INSTA_URL);
+
+      const mediaContents: { isVideo: boolean; src: string }[] = [];
+      let imgCount = 0;
+      let videoCount = 0;
+      let account = "";
+      let downloadPath = "";
+
+      try {
+        account = await page.evaluate(() => {
+          const accountEl = document.querySelector("main span a");
+          return accountEl ? (accountEl as HTMLAnchorElement).textContent : "";
+        });
+      } catch (e) {
+        scrapResult.message = `계정 추출 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      try {
+        downloadPath = scrapField.dirName
+          ? path.join(rootDir, `(${scrapField.id}) ${scrapField.dirName}`)
+          : path.join(rootDir, `(${scrapField.id}) ${account}`);
+
+        await fsPromise.mkdir(downloadPath, { recursive: true });
+      } catch (e) {
+        scrapResult.message = `디렉터리 생성 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      try {
+        await downloadTextContent(
+          page,
+          scrapField.textStatus,
+          account,
+          downloadPath
+        );
+      } catch (e) {
+        scrapResult.message = `텍스트 컨텐츠 다운로드 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      //미디어 게시물 추출
+      let worker = true;
+      try {
+        while (worker) {
+          let tempMedias: { isVideo: boolean; src: string }[] = [];
+          try {
+            tempMedias = await mediaEvaluate(page, scrapField.feedUri, 1);
+          } catch (e) {
+            worker = false;
+            throw new Error(`미디어 컨텐츠 추출 실패 : ${e.message}`);
+          }
+          console.log("tempMedia:", tempMedias);
+          // 중복되지 않는 src만 mediaContents 배열에 추가
+          tempMedias.forEach((media) => {
+            if (!mediaContents.some((item) => item.src === media.src)) {
+              mediaContents.push(media);
+            }
+          });
+          console.log("mediaContents:", mediaContents);
+
+          try {
+            // 다음 버튼 클릭을 시도. (다음 미디어로 이동)
+            const nextButton = await page.$("[aria-label^='Next']");
+            if (nextButton) {
+              await nextButton.click();
+              // 페이지 로딩 대기
+              await waitFor(1000);
+            } else {
+              worker = false;
+              break; // 다음 버튼이 없으면 반복 종료
+            }
+          } catch (error) {
+            worker = false;
+            break; // 오류 발생 시 반복 종료
+          }
+        }
+      } catch (e) {
+        worker = false;
+        scrapResult.message = e.message;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+      if(mediaContents.length === 0) {
+        scrapResult.message = "미디어 컨텐츠 찾을수 없음";
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+            CHANNEL_INSTAGRAM_SCRAP_RESULT,
+            scrapResult
+        );
+        continue;
+      }
+      try {
+        const filterImgs = mediaContents.filter((media) => !media.isVideo);
+        const filterVideos = mediaContents.filter((media) => media.isVideo);
+        await Promise.all(
+          filterImgs.map(async (img, index) => {
+            const fileName = `${++imgCount}.jpg`;
+            let watermarkText: string;
+            switch (scrapField.mark) {
+              case MarkStatus.AD:
+                watermarkText = "광고";
+                break;
+              case MarkStatus.ORIGIN:
+                watermarkText = `@${account}`;
+                break;
+              case MarkStatus.RE_GRAM:
+                watermarkText = "리그램";
+                break;
+              case MarkStatus.SPONSOR:
+                watermarkText = "협찬";
+                break;
+              case MarkStatus.NONE:
+              default:
+                break;
+            }
+
+            if (scrapField.useText) {
+              watermarkText = scrapField.useText;
+            }
+
+            if (imgCount > 1 && scrapField.markCount === MarkImgCount.FIRST) {
+              watermarkText = "";
+            }
+
+            await downloadMediaContent(
+              img.src,
+              downloadPath,
+              fileName,
+              watermarkText
+            );
+          })
+        );
+        await Promise.all(
+          filterVideos.map(async (video) => {
+            const fileName = `${++videoCount}.mp4`;
+            await downloadMediaContent(video.src, downloadPath, fileName, "");
+          })
+        );
+
+      } catch (e) {
+        scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
+        scrapResult.status = ScrapStatus.FAILURE;
+        mainWindow.webContents.send(
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
+        );
+        continue;
+      }
+
+      scrapResult.message = "컨텐츠 저장 성공.";
+      mainWindow.webContents.send(CHANNEL_INSTAGRAM_SCRAP_RESULT, scrapResult);
+      await waitFor(1500);
+    }
+
+    await page.close();
+    await browser.close();
   } catch (e) {
     page && (await page.close());
     browser && (await page.close());
