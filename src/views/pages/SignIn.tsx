@@ -39,18 +39,18 @@ export function SignIn() {
       return;
     }
     // 예: 로그인 API 호출
-    const { ok, error, userId } = await window[
+    const result = await window[
       API_STAR_CRAWLFT
     ].instagramApi.signIn({
       username,
       password,
       currentUserId: signedUser ? signedUser.userId : undefined,
     });
-    console.log(ok, error);
-    if (ok) {
+    console.log(result);
+    if (result.ok) {
       const authUser = await window[
         API_STAR_CRAWLFT
-      ].instagramApi.getSignedInUserById(userId);
+      ].instagramApi.getSignedInUserById(result.userId);
       if (authUser) {
         const { username, id } = authUser.dataValues;
         setSignedIn({ username, userId: id });
