@@ -62,7 +62,7 @@
     "react-router-dom": "^6.22.3",
     "recoil": "^0.7.7",
     "sequelize": "^6.37.1",
-    "sharp": "^0.33.2",
+    "sharp": "^0.33.3",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^2.2.1",
     "tailwind-variants": "^0.2.0",

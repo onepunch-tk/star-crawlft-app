@@ -3,7 +3,7 @@ import {
   checkDismiss,
   createBrowser,
   createPage,
-  isSignForInstagram, isSignInButton,
+  isSignInButton,
   waitFor,
 } from "../../../puppeteer";
 import {
@@ -28,7 +28,6 @@ import { User } from "../../../../db/models/user.model";
 import fsPromise from "fs/promises";
 import { constants } from "fs";
 import path from "path";
-import { app } from "electron";
 import sharp from "sharp";
 import { mainWindow } from "../../../../main";
 import { CHANNEL_INSTAGRAM_SCRAP_RESULT } from "../../ipc.constant";
@@ -63,8 +62,8 @@ export const scrapFeed = async (
     //로그인이 필요한지 체크
     await page.goto(INSTA_LOGIN_URL, { waitUntil: "networkidle2" });
     const signInButton = await isSignInButton(page);
-    if(signInButton) {
-      console.log("isSignInButton")
+    if (signInButton) {
+      console.log("isSignInButton");
       await signInButton.click();
       await signInByAccount({ username, password }, page);
       await waitFor(1000);
@@ -195,12 +194,12 @@ export const scrapFeed = async (
         );
         continue;
       }
-      if(mediaContents.length === 0) {
+      if (mediaContents.length === 0) {
         scrapResult.message = "미디어 컨텐츠 찾을수 없음";
         scrapResult.status = ScrapStatus.FAILURE;
         mainWindow.webContents.send(
-            CHANNEL_INSTAGRAM_SCRAP_RESULT,
-            scrapResult
+          CHANNEL_INSTAGRAM_SCRAP_RESULT,
+          scrapResult
         );
         continue;
       }
@@ -251,7 +250,6 @@ export const scrapFeed = async (
             await downloadMediaContent(video.src, downloadPath, fileName, "");
           })
         );
-
       } catch (e) {
         scrapResult.message = `미디 컨텐츠 다운로드 실패 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
@@ -315,13 +313,13 @@ export const instagramSignIn = async (
 
     //login form이 있을 경우 로그인 시도.
     const signInButton = await isSignInButton(page);
-    if(signInButton) {
-      console.log("isSignInButton")
+    if (signInButton) {
+      console.log("isSignInButton");
       await signInButton.click();
       // await signInByAccount({ username, password }, page);
       const { userId, error } = await signInByAccount(
-          { username, password },
-          page
+        { username, password },
+        page
       );
 
       //기존 아이디 로그아웃 처리
@@ -390,7 +388,7 @@ export const instagramSignIn = async (
       };
     }
   } catch (e) {
-    console.error(e)
+    console.error(e);
     return {
       ok: false,
       error: e.message,
@@ -472,18 +470,45 @@ const downloadMediaContent = async (
     const image = sharp(Buffer.from(arrayBuffer));
     const metadata = await image.metadata();
 
-    const svgWatermark = Buffer.from(`<svg width="${metadata.width}" height="${metadata.height}">
-      <text x="5" y="29" font-size="24" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
+    const testText = "지금 CU로 달려가야하는 이유!";
+    const titleY = metadata.height / 2 + 200;
+    const waterMarkFontSize = calculateDynamicFontSize(metadata.width, 25);
+    const titleFontSize = calculateDynamicFontSize(metadata.width, 40);
+    const subTitleFontSize = calculateDynamicFontSize(metadata.width, 50);
+    const svgWatermark = Buffer.from(`<svg width="${metadata.width}" height="${
+      metadata.height
+    }">
+      <text x="5" y="${
+        waterMarkFontSize + 10
+      }" font-size="${waterMarkFontSize}" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
+       <text x="${
+         metadata.width - 10
+       }" y="${titleY}" font-size="${titleFontSize}" fill="white" stroke="white"  stroke-width="${
+      titleFontSize * 0.2
+    }" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
+       <text x="${
+         metadata.width - 10
+       }" y="${titleY}" font-size="${titleFontSize}" fill="black" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
+       
+       
+       <text x="${metadata.width - 10}" y="${
+      titleY + titleFontSize + 30
+    }" font-size="${subTitleFontSize}" fill="white" stroke="white"  stroke-width="${
+      subTitleFontSize * 0.2
+    }" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
+     <text x="${metadata.width - 10}" y="${
+      titleY + titleFontSize + 30
+    }"  font-size="${subTitleFontSize}" fill="black" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
     </svg>`);
 
     await image
-        .composite([
-          {
-            input: svgWatermark,
-            gravity: "southeast",
-          },
-        ])
-        .toFile(finalDownloadPath);
+      .composite([
+        {
+          input: svgWatermark,
+          gravity: "northeast",
+        },
+      ])
+      .toFile(finalDownloadPath);
   } else {
     await fsPromise.writeFile(finalDownloadPath, Buffer.from(arrayBuffer));
   }
@@ -499,33 +524,31 @@ const checkExistsAsync = async (path: string) => {
   }
 };
 
-const mediaEvaluate = async (page:Page,uri:string, retryCount:number) => {
+const mediaEvaluate = async (page: Page, uri: string, retryCount: number) => {
   const RETRY_MAX_COUNT = 5;
-  const mediaList =  await page.evaluate(() => {
+  const mediaList = await page.evaluate(() => {
     const videos = Array.from(document.querySelectorAll("video")).map(
-        (video) => ({
-          isVideo: true,
-          src: video.src || video.getAttribute("src"),
-        })
+      (video) => ({
+        isVideo: true,
+        src: video.src || video.getAttribute("src"),
+      })
     );
     const imgs = Array.from(document.querySelectorAll("img"))
-        .filter(
-            (img) => img.src.includes("https://scontent.cdninstagram.com")
-        ) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
-        .map((img) => ({
-          isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
-          src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.
-        }));
+      .filter((img) => img.src.includes("https://scontent.cdninstagram.com")) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
+      .map((img) => ({
+        isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
+        src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.
+      }));
     return [...videos, ...imgs];
   });
-  if(mediaList.length < 1 && retryCount <= RETRY_MAX_COUNT) {
+  if (mediaList.length < 1 && retryCount <= RETRY_MAX_COUNT) {
     await waitFor(1000);
-    await page.goto(uri, {waitUntil:"networkidle0"});
-    await mediaEvaluate(page, uri,retryCount+1);
+    await page.goto(uri, { waitUntil: "networkidle0" });
+    await mediaEvaluate(page, uri, retryCount + 1);
   }
 
   return mediaList;
-}
+};
 
 const signInByAccount = async (
   { username, password }: { username: string; password: string },
@@ -563,5 +586,19 @@ const signInByAccount = async (
       userId: 0,
       error: e.message,
     };
+  }
+};
+
+const calculateDynamicFontSize = (
+  imageWidth: number,
+  baseFontSize: number
+): number => {
+  const baseWidth = 675; // 기준 너비
+
+  if (imageWidth <= baseWidth) {
+    return baseFontSize; // 이미지 너비가 기준보다 작거나 같다면, 기준 폰트 사이즈 반환
+  } else {
+    // 이미지 너비가 기준 너비보다 클 때, 너비 비율에 따라 폰트 사이즈 증가
+    return (imageWidth / baseWidth) * baseFontSize;
   }
 };
