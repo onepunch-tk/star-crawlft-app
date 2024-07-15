@@ -86,7 +86,7 @@ function InputContainer({ scrapField, onInputChange }: InputContainerProps) {
     <div
       key={scrapField.id}
       className={cls(
-        "relative flex w-[20rem] flex-col space-y-5 rounded-lg bg-neutral-700 p-5 shadow-lg shadow-neutral-900"
+        "relative flex w-[25rem] flex-col space-y-5 rounded-lg bg-neutral-700 p-5 shadow-lg shadow-neutral-900"
       )}
     >
       <div
@@ -116,6 +116,32 @@ function InputContainer({ scrapField, onInputChange }: InputContainerProps) {
             "ml-2 flex-1 border-b border-orange-400 bg-neutral-700"
           )}
           onChange={(e) => handleFieldChange(e, "dirName")}
+        />
+      </div>
+      <div className={"flex"}>
+        <label>CardText Top :</label>
+        <input
+            type="text"
+            value={scrapField.cardTextTop || ""}
+            className={cls(
+                "ml-2 flex-1 border-b border-orange-400 bg-neutral-700"
+            )}
+            onChange={(e) => handleFieldChange(e, "cardTextTop")}
+            placeholder={"최대 15글자 입력"}
+            maxLength={15}
+        />
+      </div>
+      <div className={"flex"}>
+        <label>CardText Bottom :</label>
+        <input
+            type="text"
+            value={scrapField.cardTextBottom || ""}
+            className={cls(
+                "ml-2 flex-1 border-b border-orange-400 bg-neutral-700"
+            )}
+            onChange={(e) => handleFieldChange(e, "cardTextBottom")}
+            placeholder={"최대 15글자 입력"}
+            maxLength={15}
         />
       </div>
       {/*<div className={cls("flex justify-around")}>*/}
@@ -234,6 +260,8 @@ export function Home() {
         mark: totalMarkStatus,
         textStatus: totalTextStatus,
         markCount,
+        cardTextTop:"",
+        cardTextBottom:""
       };
       newFields.push(newField);
     }

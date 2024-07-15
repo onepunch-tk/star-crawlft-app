@@ -17,6 +17,7 @@ const config: ForgeConfig = {
       ),
     },
     ignore: [/src[\/\\]__dev__/, /node_modules[\/\\]\.bin/],
+    // extraResource:['./src/assets/fonts/']
   },
   rebuildConfig: {},
 

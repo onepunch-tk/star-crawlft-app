@@ -82,8 +82,10 @@ export const scrapFeed = async (
       };
 
       try {
-        await page.goto(scrapField.feedUri, { waitUntil: "networkidle0" });
+        console.log(scrapField.feedUri);
+        await page.goto(scrapField.feedUri);
       } catch (e) {
+        console.log(e)
         scrapResult.message = `잘못된 게시물 주소 : ${e.message}`;
         scrapResult.status = ScrapStatus.FAILURE;
         mainWindow.webContents.send(
@@ -240,14 +242,14 @@ export const scrapFeed = async (
               img.src,
               downloadPath,
               fileName,
-              watermarkText
+                {watermarkText, cardTextTop:scrapField.cardTextTop, cardTextBottom:scrapField.cardTextBottom, imgCount}
             );
           })
         );
         await Promise.all(
           filterVideos.map(async (video) => {
             const fileName = `${++videoCount}.mp4`;
-            await downloadMediaContent(video.src, downloadPath, fileName, "");
+            await downloadMediaContent(video.src, downloadPath, fileName);
           })
         );
       } catch (e) {
@@ -459,46 +461,58 @@ const downloadMediaContent = async (
   url: string,
   outputPath: string,
   fileName: string,
-  watermarkText?: string
+  imgTextObj?:{watermarkText?:string, cardTextTop?:string, cardTextBottom?:string, imgCount:number}
 ) => {
   const response = await fetch(url);
   if (!response.ok)
     throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
   const arrayBuffer = await response.arrayBuffer();
   const finalDownloadPath = path.join(outputPath, fileName);
-  if (watermarkText) {
+  if (imgTextObj) {
     const image = sharp(Buffer.from(arrayBuffer));
     const metadata = await image.metadata();
 
-    const testText = "지금 CU로 달려가야하는 이유!";
-    const titleY = metadata.height / 2 + 200;
-    const waterMarkFontSize = calculateDynamicFontSize(metadata.width, 25);
-    const titleFontSize = calculateDynamicFontSize(metadata.width, 40);
-    const subTitleFontSize = calculateDynamicFontSize(metadata.width, 50);
+    const cardTextY = metadata.height - 50;
+    const cardTextFontSize = calculateDynamicFontSize(metadata.width, 65);
+
+    let imgText:string = "";
+
+    if(imgTextObj.watermarkText) {
+      const waterMarkFontSize = calculateDynamicFontSize(metadata.width, 25);
+      imgText += `<text x="5" y="${
+          waterMarkFontSize + 10
+      }" font-size="${waterMarkFontSize}" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${imgTextObj.watermarkText}</text>`
+    }
+
+    if(imgTextObj.cardTextBottom && imgTextObj.imgCount === 1) {
+      console.log(imgTextObj.cardTextBottom)
+
+      imgText += `<text x="${ metadata.width /2}" y="${
+          cardTextY
+      }" font-size="${cardTextFontSize}" fill="white" stroke="white"  stroke-width="${
+          cardTextFontSize * 0.2
+      }" font-weight="bold" text-anchor="middle" font-family="휴먼매직체, 휴먼편지체, 휴먼둥근헤드라인, Segoe UI, sans-serif">${imgTextObj.cardTextBottom}</text>
+     <text x="${ metadata.width /2}" y="${
+          cardTextY
+      }"  font-size="${cardTextFontSize}" fill="black" font-weight="bold" text-anchor="middle" font-family="휴먼매직체, 휴먼편지체, 휴먼둥근헤드라인, Segoe UI, sans-serif">${imgTextObj.cardTextBottom}</text>`
+    }
+
+    if(imgTextObj.cardTextTop && imgTextObj.imgCount === 1) {
+      console.log(imgTextObj.cardTextTop)
+      imgText += `<text x="${
+          metadata.width /2
+      }" y="${imgTextObj.cardTextBottom ? cardTextY - cardTextFontSize : cardTextY}" font-size="${cardTextFontSize}" fill="white" stroke="white"  stroke-width="${
+          cardTextFontSize * 0.2
+      }" font-weight="bold" text-anchor="middle" font-family="휴먼매직체, 휴먼편지체, 휴먼둥근헤드라인, Segoe UI, sans-serif">${imgTextObj.cardTextTop}</text>
+       <text x="${
+          metadata.width /2
+      }" y="${imgTextObj.cardTextBottom ? cardTextY - cardTextFontSize : cardTextY}" font-size="${cardTextFontSize}" fill="black" font-weight="bold" text-anchor="middle" font-family="휴먼매직체, 휴먼편지체, 휴먼둥근헤드라인, Segoe UI, sans-serif">${imgTextObj.cardTextTop}</text>`
+    }
+
     const svgWatermark = Buffer.from(`<svg width="${metadata.width}" height="${
       metadata.height
     }">
-      <text x="5" y="${
-        waterMarkFontSize + 10
-      }" font-size="${waterMarkFontSize}" fill="white" stroke="black" stroke-width="1" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">${watermarkText}</text>
-       <text x="${
-         metadata.width - 10
-       }" y="${titleY}" font-size="${titleFontSize}" fill="white" stroke="white"  stroke-width="${
-      titleFontSize * 0.2
-    }" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
-       <text x="${
-         metadata.width - 10
-       }" y="${titleY}" font-size="${titleFontSize}" fill="black" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
-       
-       
-       <text x="${metadata.width - 10}" y="${
-      titleY + titleFontSize + 30
-    }" font-size="${subTitleFontSize}" fill="white" stroke="white"  stroke-width="${
-      subTitleFontSize * 0.2
-    }" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
-     <text x="${metadata.width - 10}" y="${
-      titleY + titleFontSize + 30
-    }"  font-size="${subTitleFontSize}" fill="black" font-weight="bold" text-anchor="end" font-family="Arial">${testText}</text>
+        ${imgText}
     </svg>`);
 
     await image
@@ -534,7 +548,7 @@ const mediaEvaluate = async (page: Page, uri: string, retryCount: number) => {
       })
     );
     const imgs = Array.from(document.querySelectorAll("img"))
-      .filter((img) => img.src.includes("https://scontent.cdninstagram.com")) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
+      .filter((img) => img.src.includes("scontent") || img.src.includes("cdninstagram.com")) // alt 속성이 없고, src에 특정 문자열이 포함된 이미지만 필터링
       .map((img) => ({
         isVideo: false, // 여기서는 모든 이미지를 비디오가 아니라고 가정합니다.
         src: img.src || img.getAttribute("src"), // HTMLImageElement의 타입 어설션을 사용하지 않고 src 값을 가져옵니다.

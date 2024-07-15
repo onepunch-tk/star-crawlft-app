@@ -41,6 +41,8 @@ export interface ScrapField {
   mark: MarkStatus;
   markCount: MarkImgCount;
   textStatus: TextStatus;
+  cardTextTop?:string;
+  cardTextBottom:string;
   useText?: string;
   message?: string;
 }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Notification } from "electron";
 import path from "path";
 import { initializeDatabase } from "./db";
 import {
@@ -25,6 +25,7 @@ export let mainWindow: BrowserWindow;
 
 const createWindow = async () => {
   await initializeDatabase();
+  // await installFont();
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1280,
